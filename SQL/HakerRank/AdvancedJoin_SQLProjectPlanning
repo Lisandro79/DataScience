@@ -1,0 +1,32 @@
+-- https://www.hackerrank.com/challenges/sql-projects/problem
+
+-- https://stackoverflow.com/questions/634568/how-to-get-difference-between-two-rows-for-a-column-field
+
+-- Example of LEAD() https://www.sqltutorial.org/sql-window-functions/sql-lead/
+
+-- I need to do this with partitions
+
+-- My thoughts:
+
+-- Calculate NextDate Column
+-- Calculate Diff in End_Date
+-- Make new column for each task_ID
+
+Task_ID | Start_Date | End_Date | Project_ID
+
+
+GROUP BY Project_ID
+SELECT MIN(Start_Date), Max(End_Date), totalDays
+Order By TotalDays, Start_Date
+
+
+-- SOLUTION
+
+SET sql_mode = '';
+SELECT Start_Date, End_Date
+FROM 
+    (SELECT Start_Date FROM Projects WHERE Start_Date NOT IN (SELECT End_Date FROM Projects)) a,
+    (SELECT End_Date FROM Projects WHERE End_Date NOT IN (SELECT Start_Date FROM Projects)) b 
+WHERE Start_Date < End_Date
+GROUP BY Start_Date 
+ORDER BY DATEDIFF(End_Date, Start_Date), Start_Date

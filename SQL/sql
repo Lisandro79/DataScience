@@ -1,0 +1,179 @@
+
+
+SELECT COUNT(iPhoneLogs.userID), iPhoneLogs.day
+FROM iPhoneLogs
+INNER JOIN webLogs ON iPhoneLogs.userID=webLogs.userID 
+GROUP BY iPhoneLogs.day
+
+
+-- 1) Define "current pages" (all pages in the last second).
+-- 2) Select rows in table that are considered "current".
+-- 3) Count the 'on' cases in the selected rows.
+
+-- Table Pages
+-- PageID | ts | flag
+
+SELECT COUNT(*) AS PageNumber
+FROM Pages
+WHERE event_timestamp = 'now' AND Pages.flag='on'   
+
+
+-- 1) GROUP BY DAY (datetime)
+-- 2) Aggregate the count of Accepted
+-- 3) Aggregate the count of everything not Accepted
+-- 4) Divide accepted / total (accepted + rest)
+
+SELECT ds, SUM(CASE WHEN action = 'accepted' THEN 1 ELSE 0 END) / COUNT(action) AS friend_acceptance_rate
+FROM friend_requests
+GROUP BY DISTINCT DAY(ds)
+
+CREATE TABLE friend_requests (
+ds : date
+sender: int
+receiver: int
+action: varchar
+)
+
+INSERT INTO friend_requests (ds, sender, receiver, action)
+VALUES
+(CURRENT_DATE, 1, 2, 'sent')
+(CURRENT_DATE, 1, 3, 'accepted')
+(CURRENT_DATE, -1, 2, 'rejected')
+(CURRENT_DATE, -1, 2, 'accepted')
+(CURRENT_DATE, -1, 2, 'accepted')
+
+
+-- Select all customers who purchased at least two items on two separate days. 
+-- customer | purchase | OrderDate
+
+
+-- 1) Group by distinct days / customer and count the purchases
+-- 2) Group By Date and Filter Customers with Purchases >= 2
+-- 2) Show Customers
+
+-- customer | TotalPurchases | day
+
+WITH purchases_day (Customer, TotalPurchases, OrderDate)
+AS
+( SELECT Customer, COUNT(TotalPurchases), OrderDate)
+FROM customers
+GROUP BY OrderDate
+HAVING COUNT(TotalPurchases) >= 2
+)
+
+SELECT customer, TotalPurchases, OrderDate
+FROM purchases_day
+GROUP BY customer
+HAVING COUNT(OrderDate) >= 2
+
+
+SELECT customer, COUNT(DISTINCT purchases), COUNT(DISTINCT OrderDate)
+FROM customers
+GROUP BY customer
+HAVING COUNT(purchases) >=2 AND COUNT(OrderDate) >= 2
+
+
+
+CREATE TABLE customer_test (
+customer : id
+purchase: varchar
+OrderDate: date
+),
+
+INSERT INTO customer_test(customer, purchase, OrderDate)
+VALUES
+(1, 'rolex', CURRENT_DATE)
+(1, 'house', CURRENT_DATE)
+(2, 'rolex', CURRENT_DATE)
+(1, 'rolex', CURRENT_DATE)
+
+
+
+
+
+-- 1) Filter from table projects the employees with >10 projects
+-- 2) Joint projects with employess
+-- 3) ORder by salary and select top 5
+
+
+WITH projectsByEMployee AS
+(
+SELECT employee.id, COUNT(project_id) AS TotalProjects
+FROM projects
+GROUP BY employee.id
+HAVING COUNT(project_id) > 10
+)
+
+SELECT top 5 employees.id, Salary
+FROM employees
+JOIN projectsByEMployee
+ON employees.id = projects.employee_id
+ORDER BY Salary
+
+WITH unfinishedProjects AS
+(
+SELECT employee_id
+FROM projects
+GROUP BY employee_id
+WHERE END_dt IS NULL
+)
+
+
+SELECT SUM(Salary) AS SumOfSalaries
+FROM employees
+INNER JOIN unfinishedProjects
+ON employees.id = projects.employee_id
+
+
+-- 1) GROUP BY users
+-- 2) Check for each users whether COUNT(DISTINCT) <> COUNT(*)
+-- 3) Make a column Posting ('single', 'multiple')
+
+SELECT usersOnePost = COUNT(postings.Postings = 'single'), UsersMultiplePosts = COUNT(postings.Postings = 'multiple')
+FROM postings
+( 
+SELECT user_id, Postings = (CASE WHEN COUNT(DISTINCT job_id) <> COUN(job_id) 'single' ELSE 'multiple' END)
+FROM job_postings
+GROUP BY user_id
+)
+
+-- filter the transaction by date (transaction AM | transaction PM)
+-- count transactions
+
+SELECT COUNT(CASE WHEN HOUR(created_at) BETWEEN 0 and 13 END) AS transactionsAM, COUNT(CASE WHEN HOUR(created_at) BETWEEN 13 and 25 END) AS transactionPM
+FROM transactions
+GROUP BY (CASE WHEN HOUR(created_at) BETWEEN 0 and 13 THEN 1
+				WHEN HOUR(created_at) BETWEEN 13 and 25 THEN 2 END)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
