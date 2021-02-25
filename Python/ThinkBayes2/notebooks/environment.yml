@@ -1,0 +1,24 @@
+name: ThinkBayes2
+channels:
+  - default
+  - conda-forge
+dependencies:
+  - python
+  - jupyter
+  - nbconvert
+  - numpy
+  - matplotlib
+  - seaborn
+  - pandas
+  - statsmodels
+  - scipy
+  - pymc3>=3.10
+  - mkl-service
+  - python-graphviz
+  - lxml
+  - html5lib
+  - xlrd
+  - pytables
+  - pip
+  - pip:
+    - empiricaldist
