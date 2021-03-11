@@ -74,7 +74,7 @@ def telex_encode(sentence: list) -> list:
             sentence = sentence[curr_idx+1:] + sentence[:curr_idx+1]  # rotate array to the right
             sentence = sentence[:-1]
             for ch in encodings[key]:
-                sentence.append(ch)  # append new chars -> O(1) space complexity
+                sentence.append(ch)  # append new chars -> O(1) space complexity??
 
             rot_left = curr_idx + len(encodings[key])  # rotate array to the left
             sentence = sentence[-rot_left:] + sentence[:-rot_left]
