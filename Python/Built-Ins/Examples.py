@@ -57,10 +57,11 @@ print(f"Square with Map: {list(map(square, lst))}")
 squared_lambda = [(lambda x: x * x)(num) for num in lst if num > 1]
 print(f"Squared with lambda {squared_lambda}")
 
+squared_with_filter_map = list(map(lambda x: x * x, list(filter(lambda x: x > 1, lst))))
+print(f"Squared with lambda and filter {squared_with_filter_map}")
+
+
 # Defaultdict
-
-
-# lambdas
 
 
 # Set: operate in O(n) for searching and adding elements. Useful to search for elements and remove duplicates
@@ -94,6 +95,7 @@ print(next(cubes), next(cubes), next(cubes))
 
 trip = triple(5)
 print(next(trip), next(trip), next(trip))
+
 
 # Collections.deque: allows insertion and pop with O(1) time complexity
 
