@@ -1,8 +1,11 @@
 print(__doc__)
 
 from sklearn.cluster import KMeans
-from kmodes.kmodes import KModes
+# from kmodes.kmodes import KModes
 from sklearn.metrics.pairwise import euclidean_distances
+from scipy.spatial import distance
+from sklearn.preprocessing import StandardScaler
+
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +17,7 @@ def find_clusters(X, n_clusters, rseed=42):
     # rng = np.random.RandomState(rseed)
     # i = rng.permutation(X.shape[0])[:n_clusters]
     # centers = X[i]
-    initial_centers = np.random.rand(n_clusters, 5)
+    initial_centers = np.random.rand(n_clusters, 4)
 
     while True:
         # 2a. Assign labels based on closest center
@@ -34,11 +37,14 @@ def find_clusters(X, n_clusters, rseed=42):
     return initial_centers, labels
 
 
+
+
+
 # Create a dataset of 10,000 binary questionnaires of 5 binary responses each
-number_possible_responses = 32
+number_possible_responses = 16
 responses = np.arange(0, number_possible_responses)
-bits = 5
-result = (((responses[:, None] & (1 << np.arange(bits)))) > 0).astype(float)
+bits = 4
+result = ((responses[:, None] & (1 << np.arange(bits))) > 0).astype(float)
 
 # tuple (samples, )
 selected_responses = tuple(random.choices(responses, k=10000))
@@ -53,23 +59,28 @@ dataset = np.array(dataset)
 # Test a measure of distance between the responses in the questionnaire
 
 # Compare clustering algorithms
-n_clusters = 32
+n_clusters = 16
+
+# K-means from scratch
+# P = kmeans(dataset, k=n_clusters, max_iterations=100)
 
 # K-Means by hand
 centers, labels = find_clusters(dataset, number_possible_responses)
 X_embedded = TSNE(n_components=2).fit_transform(centers)
 plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=np.arange(0, n_clusters), s=50, cmap='viridis')
+plt.show()
 
 # K-Means
 kmeans = KMeans(n_clusters=n_clusters, random_state=24).fit(dataset)
 kmeans.predict(dataset)
 X_embedded = TSNE(n_components=2).fit_transform(kmeans.cluster_centers_)
 plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=np.arange(0, n_clusters), s=50, cmap='viridis')
+plt.show()
 
 # K-Modes
-km_cao = KModes(n_clusters=n_clusters, init="Cao", n_init=1, verbose=1)
-fitClusters_cao = km_cao.fit_predict(dataset)
-X_embedded = TSNE(n_components=2).fit_transform(km_cao.cluster_centroids_)
-plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=np.arange(0, n_clusters), s=50, cmap='viridis')
+# km_cao = KModes(n_clusters=n_clusters, init="Cao", n_init=1, verbose=1)
+# fitClusters_cao = km_cao.fit_predict(dataset)
+# X_embedded = TSNE(n_components=2).fit_transform(km_cao.cluster_centroids_)
+# plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=np.arange(0, n_clusters), s=50, cmap='viridis')
 
 print('ciao')
