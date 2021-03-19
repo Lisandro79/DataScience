@@ -67,6 +67,7 @@ def keypad_string(keys):
 
 
 # Create a dictionary with key = number and content the letters
+
 # Check the last press, if repeated, keep moving within key.
 
 # Check if we've reached the end of the pad. If so, save the char and restart the pointer
