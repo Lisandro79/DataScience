@@ -133,3 +133,7 @@ dmypy.json
 
 # MacOS
 .DS_Store
+
+scienceEnv/
+Projects/CaliforniaHousePrice/datasets/
+Projects/PilarScoring/dataset/

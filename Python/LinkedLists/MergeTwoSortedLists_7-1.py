@@ -2,45 +2,71 @@
 # Loop through the array and check, for each linkedList if the value coincides with the current node
 # Create a new list
 
-from Python.LinkedLists.API.API import Node, SLinkedList
+from API import Node, LList
 
 
-def merge_sorted_lists(list1: [Node], list2: [Node]):
+class Node:
+    def __init__(self, data=0, next=None):
+        self.data = data
+        self.next = next
+
+
+def merge_sorted_lists(list1, list2):
+    '''
+    :param list1: sorted linked list
+    :param list2: sorted linked list
+    :return: a merged sorted linked list
+
+    '''
+
+    values = []
+    lists = [list1, list2]
+    for _, linked_list in enumerate(lists):
+        lst = linked_list.head
+        while lst:
+            values.append(lst.data)
+            lst = lst.next
+            
+    values.sort()
 
     # Search until both lists reach the end
-    head = tail = Node()
-    head.next = tail
-    while list1 and list2:
-        if list1.data < list2.data:
-            tail.next = list1
-            list1 = list1.next
-        else:
-            tail.next = list2
-            list2 = list2.next
+    sorted_list = LList()
+    pointer = Node(values[0])
+    sorted_list.head = pointer
+    for val in enumerate(values, start=1):
+        pointer.next = Node(val)  # link current node to the next one
+        pointer = pointer.next  # override current node
 
-    return head.next
+    return sorted_list.list_print()
 
 
-# L1 = SLinkedList()
+L1 = Node(0)
 e1 = Node(2)
 e2 = Node(5)
 e3 = Node(7)
-# L1.head.next = e2
+
+L1.head = e1
 e1.next = e2
 e2.next = e3
 # L1.list_print()
 # L1 = [Node(2), Node(5), Node(7)]
 
 
-# L2 = SLinkedList()
-# L2.head = Node(3)
-# e2 = Node(11)
-# L2.head.next = e2
-# L2.list_print()
-# L2 = [Node(3), Node(11)]
-
+L2 = LList()
 e1 = Node(3)
-e2 = Node(11)
-e1.next = e2
+e2 = Node(6)
+e3 = Node(90)
 
-merge_sorted_lists(e1, e2)
+L2.head = e1
+e1.next = e2
+e2.next = e3
+# L2.list_print()
+
+# l2 = L2.head
+# print(l2.data)
+
+# e1 = Node(3)
+# e2 = Node(11)
+# e1.next = e2
+#
+merge_sorted_lists(L1, L2)
