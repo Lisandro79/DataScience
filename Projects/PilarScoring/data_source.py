@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 import numpy as np
-
+from time import perf_counter
 
 class DataSource:
     def __init__(self):
@@ -9,6 +9,16 @@ class DataSource:
         self.elections = self.load_election_results()
         self.political_parties = self.load_political_parties()
         self.councils = self.load_councils()
+        self.padron = self.load_padron()
+
+    # Load data
+    @staticmethod
+    def load_padron():
+        padron = pd.read_excel('./dataset/Padron_Del_Pilar-2019.xlsx')
+        padron = padron.loc[3:, :]
+        padron.columns = ['DNI', 'Clase', 'Apellidos', 'Nombres', 'Dirección', 'Tipo DNI', 'Circuito', 'Mesa',
+                          'Sexo', 'ESCUELA', 'LOCALIDAD']
+        return padron
 
     # Load data
     @staticmethod
@@ -43,7 +53,9 @@ class DataSource:
     def transpose_table(self, df, year):
         voting_booths = df.mesa.unique()
         parties = df['codigo_voto'].unique()
+        time1 = perf_counter()
         cols_parties = [self.get_party_name(year, party) for party in parties]
+        time2 = perf_counter()
 
         res = np.empty((len(voting_booths), len(parties) + 2), dtype=np.int32)
         for index, boot in enumerate(voting_booths):
@@ -56,11 +68,15 @@ class DataSource:
                 col += 1
             res[index, col] = data.cant_votos.sum()
 
+        time3 = perf_counter()
         dataset = pd.DataFrame(res)
         dataset.columns = np.concatenate((['mesa'], cols_parties, ['total']))
 
         dataset.loc[:, cols_parties] = dataset.loc[:, cols_parties].div(dataset.loc[:, 'total'], axis=0)
-        # dataset = dataset.loc[dataset['mesa'] < 9000]
+
+        # print(f"Time to select political parties {time2-time1}")
+        # print(f"Time to loop voting booths {time3-time2}")
+
         return dataset, cols_parties
 
     def get_council_parties(self, year, vote_ids):
@@ -85,11 +101,7 @@ class DataSource:
             return result[0]
 
     @staticmethod
-    def get_geo_polygons(self, data_loc: str):
-        # './buenos_aires.geojson'
+    def get_geo_polygons(data_loc='./buenos_aires.geojson'):
         with open(data_loc) as f:
             geojson = json.load(f)
-
-        # with open('./LocalidadesPilar.json') as f:
-        #     geojson_pilar = json.load(f)
         return geojson
