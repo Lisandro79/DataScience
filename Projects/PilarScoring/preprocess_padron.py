@@ -7,8 +7,11 @@ council = 'PILAR'
 df = ds.select_council(year=2019, election_type='municipales', council=council)
 parties = ds.get_council_parties(2019, vote_ids=df.codigo_voto.unique())
 
-# ['DNI', 'Clase', 'Apellidos', 'Nombres', 'Dirección', 'Tipo DNI', 'Circuito', 'Mesa', 'Sexo', 'ESCUELA', 'LOCALIDAD']
-pad = ds.padron.copy(deep=True)
+padron = pd.read_excel('./dataset/Padron_Del_Pilar-2019.xlsx')
+padron = padron.loc[3:, :]
+padron.columns = ['DNI', 'Clase', 'Apellidos', 'Nombres', 'Dirección', 'Tipo DNI', 'Circuito', 'Mesa',
+                  'Sexo', 'ESCUELA', 'LOCALIDAD']
+pad = padron.copy(deep=True)
 
 # Compute age from the year of birth
 # replace the '0' with the closest class
@@ -61,3 +64,7 @@ for localidad in localidades:
         i += 1
 
 dataset.to_csv('./dataset/padron.csv', index=False)
+
+
+# % votos Partido N
+# prop age

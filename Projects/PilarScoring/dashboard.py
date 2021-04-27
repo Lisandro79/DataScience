@@ -10,11 +10,13 @@ from time import perf_counter
 import json
 import random
 
-# Select initial Municipio and voting booths, Filter valid votes
 ds = DataSource()
 council = 'PILAR'
 df = ds.select_council(year=2019, election_type='municipales', council=council)
 parties = ds.get_council_parties(2019, vote_ids=df.codigo_voto.unique())
+
+localidades = ds.electoral_roll.Localidad.unique()
+features = ds.electoral_roll.columns[2:]
 
 colors = {
     'background': '#111111',
@@ -56,6 +58,29 @@ app.layout = html.Div(
                    marks={2015: '2015',
                           2019: '2019'}),
         dcc.Graph(id='pie_chart'),
+
+        html.Div([
+            html.Div([dcc.Dropdown(id='dropdown-localidad',
+                                   options=[{'label': i, 'value': i} for i in localidades],
+                                   value=localidades[0]
+                                   )
+                      ],
+                     style={'width': '28%', 'display': 'inline-block'}),
+            html.Div([dcc.Dropdown(id='dropdown-localidad-partidos',
+                                   options=[{'label': i, 'value': i} for i in parties],
+                                   value=parties[0]
+                                   )
+                      ],
+                     style={'width': '28%', 'display': 'inline-block'}),
+            html.Div([dcc.Dropdown(id='dropdown-localidad-features',
+                                   options=[{'label': i, 'value': i} for i in features],
+                                   value=features[0]
+                                   )
+                      ],
+                     style={'width': '38%', 'float': 'right', 'display': 'inline-block'})
+        ]),
+        dcc.Graph(id='scatter-localidad', className='card'),
+
         html.Div([
             html.Div([dcc.Dropdown(id='dropdown-scatter1',
                                    options=[{'label': i, 'value': i} for i in parties],
@@ -88,6 +113,12 @@ app.layout = html.Div(
 @app.callback(
     [Output('intermediate-data', 'children'),
      Output('intermediate-parties', 'children'),
+     Output('dropdown-localidad', 'options'),
+     Output('dropdown-localidad-partidos', 'options'),
+     Output('dropdown-localidad-features', 'options'),
+     Output('dropdown-localidad', 'value'),
+     Output('dropdown-localidad-partidos', 'value'),
+     Output('dropdown-localidad-features', 'value'),
      Output('dropdown-scatter1', 'options'),
      Output('dropdown-scatter2', 'options'),
      Output('dropdown-scatter1', 'value'),
@@ -102,28 +133,55 @@ def update_dataframe(selected_year):
     time2 = perf_counter()
     data, political_parties = ds.transpose_table(df_council, selected_year)
     time3 = perf_counter()
-    options = [{'label': i, 'value': i} for i in political_parties]
+    data = pd.merge(data, ds.electoral_roll, on='Mesa')
+    localidades = data.Localidad.unique()
+    features = ds.electoral_roll.columns[2:]
+    formatted_localidades = [{'label': i, 'value': i} for i in localidades]
+    formatted_features = [{'label': i, 'value': i} for i in features]
+    formatted_political_parties = [{'label': i, 'value': i} for i in political_parties]
     serialized_data = data.to_json(date_format='iso', orient='split')
     time4 = perf_counter()
     print(f"Select Council {selected_year}, Took {time2 - time1} seconds")
     print(f"Transpose table took {time3-time2}")
     print(f"Serialization Took {time4 - time3}")
-    return serialized_data, json.dumps(political_parties), options, options, \
-           political_parties[0], political_parties[1], political_parties[0], options
-
+    return serialized_data,\
+           json.dumps(political_parties), \
+           formatted_localidades, \
+           formatted_political_parties, \
+           formatted_features, \
+           localidades[0], \
+           political_parties[0], \
+           features[0], \
+           formatted_political_parties, \
+           formatted_political_parties, \
+           political_parties[0], \
+           political_parties[1], \
+           political_parties[0], \
+           formatted_political_parties
 
 @app.callback(
     [Output('pie_chart', 'figure'),
      Output('scatter', 'figure'),
-     Output('hbar', 'figure')],  #  Output('map', 'figure')
+     Output('hbar', 'figure'),
+     Output('scatter-localidad', 'figure')],
     [Input('intermediate-data', 'children'),
      Input('intermediate-parties', 'children'),
+     Input('dropdown-localidad', 'value'),
+     Input('dropdown-localidad-partidos', 'value'),
+     Input('dropdown-localidad-features', 'value'),
      Input('dropdown-scatter1', 'value'),
      Input('dropdown-scatter2', 'value'),
      Input('dropdown-hbar', 'value')]
 )
-def update_pie_bar_charts(serialized_data, serialized_political_parties,
-                          dropdown1, dropdown2, dropdown):
+def update_pie_bar_charts(serialized_data,
+                          serialized_political_parties,
+                          dropdown_localidad,
+                          dropdown_localidad_partido,
+                          dropdown_localidad_feature,
+                          dropdown1,
+                          dropdown2,
+                          dropdown):
+
     data = pd.read_json(serialized_data, orient='split')
     political_parties = json.loads(serialized_political_parties)
     results = pd.DataFrame(data[political_parties].mean(axis=0).reset_index())
@@ -134,11 +192,24 @@ def update_pie_bar_charts(serialized_data, serialized_political_parties,
     fig_pie = px.pie(results, values='Porcentage Votos', names='Partidos Politicos')
     fig_pie.update_layout()
 
+    filtered_by_localidad = data.loc[data['Localidad'] == dropdown_localidad]
+    pearson_r = filtered_by_localidad[dropdown_localidad_feature].corr(filtered_by_localidad[dropdown_localidad_partido])
+    fig_scatter_localidad = px.scatter(filtered_by_localidad,
+                             x=dropdown_localidad_feature,
+                             y=dropdown_localidad_partido,
+                             hover_data=['Mesa'],
+                             color=dropdown2,
+                             title=f"Pearson's R: {pearson_r}")
+    fig_scatter_localidad.update_layout(plot_bgcolor=colors['background'],
+                              paper_bgcolor=colors['background'],
+                              font_color=colors['text']
+                              )
+
     pearson_r = data[dropdown1].corr(data[dropdown2])
     fig_scatter = px.scatter(data,
                              x=dropdown1,
                              y=dropdown2,
-                             hover_data=['mesa'],
+                             hover_data=['Mesa'],
                              color=dropdown2,
                              title=f"Pearson's R: {pearson_r}")
     fig_scatter.update_layout(plot_bgcolor=colors['background'],
@@ -154,7 +225,7 @@ def update_pie_bar_charts(serialized_data, serialized_political_parties,
                      orientation='h',
                      barmode="stack",
                      opacity=1,
-                     hover_data=["mesa"],
+                     hover_data=["Mesa"],
                      labels={'value': "Porcentage Votos", 'y': '', 'variable': 'Partidos Politicos'},
                      # color_discrete_sequence= px.colors.qualitative.G10,
                      color_discrete_sequence=["red", "blue", "yellow", "green", "magenta", "goldenrod"],
@@ -164,16 +235,16 @@ def update_pie_bar_charts(serialized_data, serialized_political_parties,
                           font_color=colors['text']
                           )
 
-    return fig_pie, fig_scatter, fig_bar
+    return fig_pie, fig_scatter, fig_bar, fig_scatter_localidad
 
 
 if __name__ == "__main__":
     app.run_server(debug=True)
 
 # TODO
-#  1. Filter voting booths from villa rosa
-#  2. Calculate mean age & gender for each voting booth
-#  3. Plot correlation age & gender over
+#  1. Filter voting booths from villa rosa (ok)
+#  2. Calculate mean age & gender for each voting booth (ok)
+#  3. Scatter plot for votes and age / gender for each voting booth
 #  Ranking of Voting booths according to volatility (change of vote 2015 - 2019, peronista vs no peronista)
 #  Add new page to the dashboard. Navigate through pages
 #  Sex, gender, age, school (geographic location), surname (do people with the same surname tend to vote the same?)
