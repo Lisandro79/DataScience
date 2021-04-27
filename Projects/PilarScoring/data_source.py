@@ -9,22 +9,19 @@ class DataSource:
         self.elections = self.load_election_results()
         self.political_parties = self.load_political_parties()
         self.councils = self.load_councils()
-        self.padron = self.load_padron()
+        self.electoral_roll = self.load_electoral_roll()
 
     # Load data
     @staticmethod
-    def load_padron():
-        padron = pd.read_excel('./dataset/Padron_Del_Pilar-2019.xlsx')
-        padron = padron.loc[3:, :]
-        padron.columns = ['DNI', 'Clase', 'Apellidos', 'Nombres', 'Dirección', 'Tipo DNI', 'Circuito', 'Mesa',
-                          'Sexo', 'ESCUELA', 'LOCALIDAD']
-        return padron
+    def load_electoral_roll():
+        electoral_roll = pd.read_csv('./dataset/padron.csv')
+        return electoral_roll
 
     # Load data
     @staticmethod
     def load_election_results():
         elections = pd.read_csv('./dataset/agregados/Nuevo_elecciones_09_19.csv', low_memory=False)
-        elections.columns = ['year', 'cargo', 'provincia', 'id_municipio', 'circuito', 'mesa', 'codigo_voto',
+        elections.columns = ['year', 'cargo', 'provincia', 'id_municipio', 'circuito', 'Mesa', 'codigo_voto',
                              'cant_votos']
         return elections
 
@@ -51,7 +48,7 @@ class DataSource:
         return df
 
     def transpose_table(self, df, year):
-        voting_booths = df.mesa.unique()
+        voting_booths = df.Mesa.unique()
         parties = df['codigo_voto'].unique()
         time1 = perf_counter()
         cols_parties = [self.get_party_name(year, party) for party in parties]
@@ -60,7 +57,7 @@ class DataSource:
         res = np.empty((len(voting_booths), len(parties) + 2), dtype=np.int32)
         for index, boot in enumerate(voting_booths):
             col = 0
-            data = df.loc[df['mesa'] == boot]
+            data = df.loc[df['Mesa'] == boot]
             res[index, col] = boot
             col += 1
             for row in data.iterrows():
@@ -70,7 +67,7 @@ class DataSource:
 
         time3 = perf_counter()
         dataset = pd.DataFrame(res)
-        dataset.columns = np.concatenate((['mesa'], cols_parties, ['total']))
+        dataset.columns = np.concatenate((['Mesa'], cols_parties, ['total']))
 
         dataset.loc[:, cols_parties] = dataset.loc[:, cols_parties].div(dataset.loc[:, 'total'], axis=0)
 
