@@ -38,15 +38,23 @@ lst = list(bad_guys.items())  # extract dictionary elements to list
 list(bad_guys.keys())
 list(bad_guys.values())
 
-'batman' in bad_guys  # check existence of key
-bad_guys.get('batman ')
+"batman" in bad_guys  # check existence of key
+bad_guys.get('batman')
 
 # Sort Dictionaries
-animals = [{'type': 'cat', 'name': 'Stephanie', 'age': 8},
-           {'type': 'dog', 'name': 'Devon', 'age': 3},
-           {'type': 'rhino', 'name': 'Moe', 'age': 5}]
+animals = [{"type": 'cat', 'name': 'Stephanie', 'age': 8},
+           {"type": 'dog', 'name': 'Devon', 'age': 3},
+           {"type": 'rhino', 'name': 'Moe', 'age': 5}]
 
 print(sorted(animals, key=lambda animal: animal['type'], reverse=True))
+
+# Ordered Dictionaries: from Python 3.8, dictionaries are ordered by default
+import collections
+d = collections.OrderedDict(one=1, two=2, three=3)
+
+# Defaultdict
+from collections import defaultdict
+dd = defaultdict(list)
 
 # List comprehensions: square a list of numbers
 lst = [1, 2, 4, 5, 6]
@@ -60,15 +68,11 @@ print(f"Squared with lambda {squared_lambda}")
 squared_with_filter_map = list(map(lambda x: x * x, list(filter(lambda x: x > 1, lst))))
 print(f"Squared with lambda and filter {squared_with_filter_map}")
 
-
-# Defaultdict
-
-
 # Set: operate in O(n) for searching and adding elements. Useful to search for elements and remove duplicates
 # Sets store elements in a manner that allows near-constant-time checks whether a value is in the set or not,
 # unlike lists, which require linear-time lookups
 # {}
-all_words = 'hello world how is this world today how'.split()
+all_words = "hello world how is this world today how".split()
 words = set()
 for _ in range(10):
     word = random.choice(all_words)
@@ -76,6 +80,16 @@ for _ in range(10):
 
 print(f"These are the unique words {words}")
 
+vowels = {'a', 'e', 'i', 'o', 'u'}
+vowels.add('x')
+word = 'alex'
+vowels.intersection(word)
+
+# Frozenset (inmutable and hashable)
+d = {frozenset({1, 2, 3}): "hello"}
+d[frozenset({1, 2, 3})]
+
+# Collections.Counter: Multiset
 
 # Generators: https://realpython.com/introduction-to-python-generators/
 # useful when we need to process data without increasing memory

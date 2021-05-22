@@ -3,11 +3,12 @@ import pandas as pd
 import numpy as np
 from time import perf_counter
 
+
 class DataSource:
     def __init__(self):
         self.invalid_codes = ['9001', '9002', '9003', '9004', '9005', '9005', '9006', '9010', '9020']
-        self.elections = self.load_election_results()
-        self.political_parties = self.load_political_parties()
+        self.political_parties, self.political_party_paso = self.load_political_parties()
+        self.elections, self.paso = self.load_election_results()
         self.councils = self.load_councils()
         self.electoral_roll = self.load_electoral_roll()
 
@@ -15,22 +16,40 @@ class DataSource:
     @staticmethod
     def load_electoral_roll():
         electoral_roll = pd.read_csv('./dataset/padron.csv')
+        electoral_roll.columns = electoral_roll.columns.str.lower()
         return electoral_roll
 
     # Load data
     @staticmethod
     def load_election_results():
         elections = pd.read_csv('./dataset/agregados/Nuevo_elecciones_09_19.csv', low_memory=False)
-        elections.columns = ['year', 'cargo', 'provincia', 'id_municipio', 'circuito', 'Mesa', 'codigo_voto',
+        elections.columns = ['year', 'cargo', 'provincia', 'id_municipio', 'circuito', 'mesa', 'codigo_voto',
                              'cant_votos']
-        return elections
+
+        paso = pd.read_csv('./dataset/paso_2019/resultados_mesas.csv', sep=';', low_memory=False)
+        paso.columns = ['id_provincia', 'id_municipio', 'circuito', 'mesa', 'id_eleccion', 'codigo_voto',
+                        'id_lista', 'cant_votos']
+        paso.insert(0, 'year', 2019)
+        paso.insert(1, 'cargo', 'municipales')
+
+        return elections, paso
 
     @staticmethod
     def load_political_parties():
         political_party = pd.read_csv('./dataset/agregados/Nuevo_codigo_votos_09_19.csv', low_memory=False)
         columns = ['anio', 'codigo_voto', 'nombre_partido']
         political_party.columns = columns
-        return political_party
+        # political_party = political_party.drop_duplicates(subset=['codigo_voto'])
+
+        political_party_paso = pd.read_csv('./dataset/paso_2019/descripcion_postulaciones.csv', sep=';',
+                                           low_memory=False)
+        columns = ['id_eleccion', 'eleccion', 'codigo_voto', 'nombre_partido', 'id_lista', 'lista']
+        political_party_paso.columns = columns
+        political_party_paso.insert(0, 'anio', 2019)
+        political_party_paso = political_party_paso.drop(['id_eleccion', 'eleccion', 'id_lista', 'lista'], axis=1)\
+            .sort_values(by=['codigo_voto']).drop_duplicates(subset=['codigo_voto'])
+
+        return political_party, political_party_paso
 
     @staticmethod
     def load_councils(dataset='./dataset/agregados/municipios_aglo.csv'):
@@ -45,36 +64,78 @@ class DataSource:
                                 (self.elections['year'] == year) &
                                 (~self.elections['codigo_voto'].isin(self.invalid_codes))]
         df = df.drop(['provincia', 'id_municipio', 'circuito'], axis=1)
-        return df
+        df.insert(4, 'nombre_partido', '')
+        df.insert(5, 'prop_votos', '')
 
-    def transpose_table(self, df, year):
-        voting_booths = df.Mesa.unique()
-        parties = df['codigo_voto'].unique()
-        time1 = perf_counter()
-        cols_parties = [self.get_party_name(year, party) for party in parties]
-        time2 = perf_counter()
+        parties = self.get_council_parties(2019, vote_ids=df.codigo_voto.unique())
 
-        res = np.empty((len(voting_booths), len(parties) + 2), dtype=np.int32)
-        for index, boot in enumerate(voting_booths):
-            col = 0
-            data = df.loc[df['Mesa'] == boot]
-            res[index, col] = boot
-            col += 1
-            for row in data.iterrows():
-                res[index, col] = row[1][4]
-                col += 1
-            res[index, col] = data.cant_votos.sum()
+        for code in df.codigo_voto.unique():
+            party = self.political_parties.loc[(self.political_parties['codigo_voto'] == code) &
+                                               (self.political_parties['anio'] == year)]['nombre_partido'].values
+            df.loc[df.codigo_voto == code, 'nombre_partido'] = party[0]
 
-        time3 = perf_counter()
-        dataset = pd.DataFrame(res)
-        dataset.columns = np.concatenate((['Mesa'], cols_parties, ['total']))
+        for mesa in df.mesa.unique():
+            total_mesa = df.loc[df.mesa == mesa, 'cant_votos'].sum()
+            df.loc[df.mesa == mesa, 'prop_votos'] = df.loc[df.mesa == mesa, 'cant_votos'] / total_mesa
 
-        dataset.loc[:, cols_parties] = dataset.loc[:, cols_parties].div(dataset.loc[:, 'total'], axis=0)
+        df['mesa'] = pd.to_numeric(df['mesa'], downcast='integer')
+        df = df.sort_values(by=['mesa', 'nombre_partido'])
 
-        # print(f"Time to select political parties {time2-time1}")
-        # print(f"Time to loop voting booths {time3-time2}")
+        # Format Paso
+        ps = self.paso.loc[(self.paso['id_municipio'] == id_council) &
+                           ~(self.paso['codigo_voto'].isin(self.invalid_codes))]
+        ps = ps.drop(['id_provincia', 'id_municipio', 'circuito', 'id_eleccion', 'id_lista'], axis=1)
 
-        return dataset, cols_parties
+        # TODO: check why there is one missing voting booth
+        # Voting Booth 671 is missing in the Paso election. I will discard it here, we need to further check this
+        common_voting_booths = list(set(df.mesa.unique()).intersection(ps.mesa.unique()))
+        ps = ps.loc[ps['mesa'].isin(common_voting_booths)]
+        df = df.loc[df['mesa'].isin(common_voting_booths)]
+
+        for code in ps.codigo_voto.unique():
+            party = self.political_party_paso.loc[self.political_party_paso['codigo_voto'] == code]['nombre_partido']\
+                .values
+            ps.loc[ps.codigo_voto == code, 'nombre_partido'] = party[0]
+
+        # Calculate proportion of votes for each party
+        # Return only those political parties that reached the general election
+        paso = pd.DataFrame()
+        for mesa in ps.mesa.unique():
+            total_mesa = ps.loc[ps.mesa == mesa, 'cant_votos'].sum()
+            ps.loc[ps.mesa == mesa, 'prop_votos'] = ps.loc[ps.mesa == mesa, 'cant_votos'] / total_mesa
+
+            # sum proportions and cant_votos for each unique party
+            aggregation_functions = {'year': 'first', 'cargo': 'first', 'mesa': 'first', 'codigo_voto': 'first',
+                                     'nombre_partido': 'first', 'prop_votos': 'sum', 'cant_votos': 'sum'}
+            df_new = ps.loc[ps.mesa == mesa]
+            df_new = df_new.groupby(ps['nombre_partido'], as_index=False).aggregate(aggregation_functions)
+
+            # filter parties that did not qualify to the general election
+            paso = paso.append(df_new.loc[df_new.nombre_partido.isin(parties)])
+
+        paso = paso.sort_values(by=['mesa', 'nombre_partido'])
+
+        # Compute volatility from Paso to General election
+        general_election = df.pivot(index='mesa', columns=['nombre_partido'], values='prop_votos')
+        paso_election = paso.pivot(index='mesa', columns=['nombre_partido'], values='prop_votos')
+        volatility = general_election - paso_election
+        volatility.insert(0, 'mesa', df['mesa'].unique())
+        general_election.insert(0, 'mesa', df['mesa'].unique())
+        paso_election.insert(0, 'mesa', paso['mesa'].unique())
+
+        general_election.index.name = None
+        paso_election.index.name = None
+        volatility.index.name = None
+
+        general_election = pd.merge(general_election, self.electoral_roll, on='mesa')
+        volatility = pd.merge(volatility, self.electoral_roll, on='mesa')
+
+        return general_election, paso_election, volatility, parties
+
+        # time4 = perf_counter()
+        # print(f"Select Council {selected_year}, Took {time2 - time1} seconds")
+        # print(f"Transpose table took {time3-time2}")
+        # print(f"Serialization Took {time4 - time3}")
 
     def get_council_parties(self, year, vote_ids):
         parties_names = [self.get_party_name(year, vote_id) for vote_id in vote_ids]
@@ -102,3 +163,32 @@ class DataSource:
         with open(data_loc) as f:
             geojson = json.load(f)
         return geojson
+
+
+# def transpose_table(self, df, year):
+#     voting_booths = df.mesa.unique()
+#     parties = df['codigo_voto'].unique()
+#     time1 = perf_counter()
+#     cols_parties = [self.get_party_name(year, party) for party in parties]
+#     time2 = perf_counter()
+#
+#     res = np.empty((len(voting_booths), len(parties) + 2), dtype=np.int32)
+#     for index, boot in enumerate(voting_booths):
+#         col = 0
+#         data = df.loc[df['mesa'] == boot]
+#         res[index, col] = boot
+#         col += 1
+#         for row in data.iterrows():
+#             res[index, col] = row[1][6]
+#             col += 1
+#         res[index, col] = data.cant_votos.sum()
+#
+#     time3 = perf_counter()
+#     dataset = pd.DataFrame(res)
+#     dataset.columns = np.concatenate((['mesa'], cols_parties, ['total']))
+#
+#     dataset.loc[:, cols_parties] = dataset.loc[:, cols_parties].div(dataset.loc[:, 'total'], axis=0)
+#     # print(f"Time to select political parties {time2-time1}")
+#     # print(f"Time to loop voting booths {time3-time2}")
+#
+#     return dataset, cols_parties
