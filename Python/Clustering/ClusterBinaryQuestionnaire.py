@@ -1,15 +1,13 @@
 print(__doc__)
-
+import matplotlib.pyplot as plt
+import numpy as np
+import random
 from sklearn.cluster import KMeans
 # from kmodes.kmodes import KModes
 from sklearn.metrics.pairwise import euclidean_distances
 from scipy.spatial import distance
 from sklearn.preprocessing import StandardScaler
-
 from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import numpy as np
-import random
 
 
 def find_clusters(X, n_clusters, rseed=42):
@@ -35,9 +33,6 @@ def find_clusters(X, n_clusters, rseed=42):
         initial_centers = new_centers
 
     return initial_centers, labels
-
-
-
 
 
 # Create a dataset of 10,000 binary questionnaires of 5 binary responses each
