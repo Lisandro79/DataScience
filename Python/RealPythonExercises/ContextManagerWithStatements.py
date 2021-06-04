@@ -46,7 +46,7 @@ class ExecutionTimer:
 if __name__ == '__main__':
 
     with execution_time_with_context() as et:
-        time.sleep(1)
+        time.sleep(0.5)
 
     with ExecutionTimer() as et:
         et.tell_joke("Gummy bear")

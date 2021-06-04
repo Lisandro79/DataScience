@@ -1,0 +1,4 @@
+https://wiki.python.org/moin/PythonDecoratorLibrary
+
+ @property - standart python decorator for marking class method as property
+ @retry - decorator from PythonDecoratorLibrary that retries method execution several times
